@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Pituaçu">
+<link rel="manifest" href="/manifest.json">
 <title>Pituaçu — Saída de Cana</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -24,10 +25,11 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
 .header svg{width:56px;height:56px}
 .header-nome .sub{font-size:9px;color:rgba(255,255,255,0.7);letter-spacing:.16em;text-transform:uppercase;text-align:center}
 .header-nome .nome{font-size:18px;font-weight:700;color:#fff;letter-spacing:.04em;text-transform:uppercase;text-align:center}
-.header-status{display:flex;justify-content:flex-end;width:100%;margin-top:2px}
+.header-status{display:flex;justify-content:flex-end;width:100%;margin-top:2px;gap:6px}
 .badge{font-size:11px;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
 .badge-offline{background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3)}
 .badge-online{background:var(--verde-claro);color:var(--verde-txt);border:1px solid var(--verde-borda)}
+.badge-sync{background:rgba(255,200,0,0.3);color:#fff;border:1px solid rgba(255,200,0,0.5);font-size:10px}
 .tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--borda)}
 .tab{flex:1;padding:12px 4px;font-size:13px;font-weight:400;color:var(--txt2);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
 .tab.active{color:var(--verde);font-weight:700;border-bottom-color:var(--verde)}
@@ -55,6 +57,7 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
 .card{background:var(--bg);border:1px solid var(--borda);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .card.pendente{border-left:4px solid var(--amarelo)}
 .card.completo{border-left:4px solid var(--verde)}
+.card.local{border-left:4px solid var(--amarelo);opacity:.85}
 .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
 .card-frota{font-size:16px;font-weight:700;color:var(--txt)}
 .card-datetime{font-size:12px;color:var(--txt2);margin-bottom:8px}
@@ -64,6 +67,7 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
 .card-footer{display:flex;justify-content:flex-end;margin-top:10px}
 .badge-pend{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--amarelo-claro);color:var(--amarelo-txt);border:1px solid var(--amarelo);white-space:nowrap}
 .badge-ok{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--verde-claro);color:var(--verde-txt);border:1px solid var(--verde-borda);white-space:nowrap}
+.badge-local{font-size:11px;padding:3px 9px;border-radius:20px;background:#FFF3CD;color:#856404;border:1px solid #FFC107;white-space:nowrap}
 .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
 .stat{background:var(--bg2);border-radius:var(--radius);padding:14px 8px;text-align:center}
 .stat-val{font-size:22px;font-weight:700;color:var(--txt)}
@@ -73,6 +77,8 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
 .export-box p{font-size:13px;color:var(--txt2);margin-bottom:12px}
 .empty{text-align:center;padding:2rem 1rem;color:var(--txt2);font-size:14px}
 .loading{text-align:center;padding:2rem;color:var(--txt3);font-size:14px}
+.offline-banner{background:#856404;color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:500}
+.sync-banner{background:var(--verde);color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:500;display:none}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:11px 22px;border-radius:24px;font-size:14px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
 .toast.show{opacity:1}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center}
@@ -93,6 +99,13 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
 </head>
 <body>
 <div class="app">
+  <div id="offline-banner" class="offline-banner" style="display:none">
+    Sem internet — dados salvos no celular e enviados quando o sinal voltar
+  </div>
+  <div id="sync-banner" class="sync-banner">
+    Sincronizando dados com o servidor...
+  </div>
+
   <div class="header">
     <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
       <circle cx="36" cy="36" r="35" fill="#3A6830"/>
@@ -110,6 +123,7 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
     </div>
     <div class="header-status">
       <span class="badge badge-offline" id="net-badge">Offline</span>
+      <span class="badge badge-sync" id="pend-badge" style="display:none">0 pendentes</span>
     </div>
   </div>
 
@@ -225,12 +239,11 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
 
 <div id="toast" class="toast"></div>
 
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-// Firebase init
+// ---- FIREBASE ----
 var firebaseConfig = {
   apiKey: "AIzaSyCKboxVQVkuVEp9b41u9ANVQbFi5CWBbww",
   authDomain: "pituacu-19897.firebaseapp.com",
@@ -243,24 +256,50 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 var col = db.collection("cargas");
 
+// Habilita persistência offline (IndexedDB)
+db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+  console.log('Persistencia offline:', err.code);
+});
+
+// ---- ESTADO ----
 var _cargas = [];
 var _filtro = 'frota';
 var _modalId = null;
+var _online = navigator.onLine;
 
-// Escuta tempo real
-col.orderBy("criadoEm", "desc").onSnapshot(function(snap) {
+// ---- SERVICE WORKER ----
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(function() {
+    console.log('SW registrado');
+  }).catch(function(e) {
+    console.log('SW erro:', e);
+  });
+}
+
+// ---- ESCUTA TEMPO REAL (funciona offline com persistência) ----
+col.orderBy("criadoEm", "desc").onSnapshot({ includeMetadataChanges: true }, function(snap) {
   _cargas = snap.docs.map(function(d) {
     var data = d.data();
     data.id = d.id;
+    data._local = d.metadata.hasPendingWrites; // dado ainda não sincronizado
     return data;
   });
+  // Conta pendentes de sync
+  var pendentes = _cargas.filter(function(c) { return c._local; }).length;
+  var pb = document.getElementById('pend-badge');
+  if (pendentes > 0) {
+    pb.style.display = 'inline-flex';
+    pb.textContent = pendentes + ' aguardando sync';
+  } else {
+    pb.style.display = 'none';
+  }
   renderHistorico();
   renderResumo();
 }, function(err) {
   console.error(err);
-  showToast('Erro ao carregar dados', false);
 });
 
+// ---- HELPERS ----
 function fNum(n) { return Number(n).toFixed(2).replace('.', ','); }
 function fDate(d) {
   if (!d) return '';
@@ -287,6 +326,30 @@ function setNow() {
   document.getElementById('f-data').value = y + '-' + m + '-' + d;
   document.getElementById('f-hora').value = h + ':' + mi;
 }
+
+// ---- STATUS REDE ----
+function atualizarStatus() {
+  _online = navigator.onLine;
+  var el = document.getElementById('net-badge');
+  var banner = document.getElementById('offline-banner');
+  if (_online) {
+    el.className = 'badge badge-online';
+    el.textContent = 'Online';
+    banner.style.display = 'none';
+  } else {
+    el.className = 'badge badge-offline';
+    el.textContent = 'Offline';
+    banner.style.display = 'block';
+  }
+}
+window.addEventListener('online', function() {
+  atualizarStatus();
+  showToast('Sinal voltou! Sincronizando dados...');
+});
+window.addEventListener('offline', function() {
+  atualizarStatus();
+  showToast('Sem sinal — dados salvos no celular', false);
+});
 
 // ---- TABS ----
 function switchTab(t) {
@@ -331,6 +394,7 @@ function salvarSaida() {
   var btn = document.getElementById('btn-salvar');
   btn.textContent = 'Salvando...';
   btn.disabled = true;
+  // Firebase salva localmente se offline e sincroniza quando voltar
   col.add({
     data: data, hora: hora, talhao: talhao, frota: frota,
     presumido: presumido, obs: obs, pesoReal: null,
@@ -341,9 +405,13 @@ function salvarSaida() {
     document.getElementById('f-presumido').value = '';
     document.getElementById('f-obs').value = '';
     setNow();
-    showToast('Saida registrada!');
+    if (_online) {
+      showToast('Saida registrada!');
+    } else {
+      showToast('Salvo no celular! Envia quando tiver sinal.');
+    }
   }).catch(function(e) {
-    showToast('Erro ao salvar. Verifique a conexao.', false);
+    showToast('Erro ao salvar', false);
     console.error(e);
   }).finally(function() {
     btn.textContent = 'Registrar saida';
@@ -396,9 +464,9 @@ function salvarBalanca() {
   if (real <= 0) { showToast('Informe o peso da balanca', false); return; }
   col.doc(_modalId).update({ pesoReal: real }).then(function() {
     fecharModal();
-    showToast('Peso real salvo!');
+    showToast(_online ? 'Peso real salvo!' : 'Salvo no celular! Envia quando tiver sinal.');
   }).catch(function(e) {
-    showToast('Erro ao salvar. Verifique a conexao.', false);
+    showToast('Erro ao salvar', false);
     console.error(e);
   });
 }
@@ -433,11 +501,18 @@ function renderHistorico() {
   }
   el.innerHTML = cargas.map(function(c) {
     var completo = c.pesoReal != null;
+    var local = c._local;
     var dif = completo ? c.pesoReal - c.presumido : null;
-    return '<div class="card ' + (completo ? 'completo' : 'pendente') + '">' +
+    var statusBadge = local
+      ? '<span class="badge-local">Aguard. sinal</span>'
+      : completo
+        ? '<span class="badge-ok">Completo</span>'
+        : '<span class="badge-pend">Aguard. balanca</span>';
+    var cardClass = local ? 'local' : completo ? 'completo' : 'pendente';
+    return '<div class="card ' + cardClass + '">' +
       '<div class="card-header">' +
         '<div class="card-frota">Frota ' + c.frota + '</div>' +
-        '<span class="' + (completo ? 'badge-ok' : 'badge-pend') + '">' + (completo ? 'Completo' : 'Aguard. balanca') + '</span>' +
+        statusBadge +
       '</div>' +
       '<div class="card-datetime">' + fDate(c.data) + ' as ' + c.hora + ' - Talhao ' + c.talhao + '</div>' +
       '<div class="card-row"><span>Peso presumido</span><span style="color:var(--amarelo-txt)">' + fNum(c.presumido) + ' ton</span></div>' +
@@ -446,7 +521,7 @@ function renderHistorico() {
         '<div class="card-row"><span>Peso real</span><span style="color:var(--verde)">' + fNum(c.pesoReal) + ' ton</span></div>' +
         '<div class="card-row"><span>Diferenca</span><span class="' + (dif >= 0 ? 'dif-pos' : 'dif-neg') + '">' + (dif >= 0 ? '+' : '') + fNum(dif) + ' ton</span></div>'
         :
-        '<button class="btn-info" onclick="abrirModal(\'' + c.id + '\')">Inserir peso da balanca</button>'
+        (!local ? '<button class="btn-info" onclick="abrirModal(\'' + c.id + '\')">Inserir peso da balanca</button>' : '')
       ) +
       (c.obs ? '<div class="card-row" style="margin-top:6px"><span>Obs</span><span>' + c.obs + '</span></div>' : '') +
       '<div class="card-footer"><button class="btn-danger" onclick="deletar(\'' + c.id + '\')">Excluir</button></div>' +
@@ -506,20 +581,6 @@ function exportarCSV() {
   URL.revokeObjectURL(url);
   showToast('CSV exportado!');
 }
-
-// ---- STATUS REDE ----
-function atualizarStatus() {
-  var el = document.getElementById('net-badge');
-  if (navigator.onLine) {
-    el.className = 'badge badge-online';
-    el.textContent = 'Online';
-  } else {
-    el.className = 'badge badge-offline';
-    el.textContent = 'Offline';
-  }
-}
-window.addEventListener('online', atualizarStatus);
-window.addEventListener('offline', atualizarStatus);
 
 document.getElementById('modal-balanca').addEventListener('click', function(e) {
   if (e.target === this) fecharModal();
