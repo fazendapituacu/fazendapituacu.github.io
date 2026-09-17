@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4A7C3F">
+<title>Pituaçu — Dashboard Colheita 26/27</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --verde:#4A7C3F;--verde-claro:#EAF3DE;--verde-txt:#3B6D11;
+  --amarelo:#EF9F27;--amarelo-claro:#FAEEDA;--amarelo-txt:#BA7517;
+  --azul:#185FA5;--azul-claro:#E6F1FB;
+  --vermelho:#A32D2D;--vermelho-claro:#FCEBEB;
+  --bg:#F5F7FA;--card:#FFFFFF;--txt:#1A1A1A;--txt2:#666;--txt3:#999;
+  --borda:#E0E0E0;--radius:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+
+/* LOGIN */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:var(--card);border-radius:var(--radius);padding:40px 32px;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(0,0,0,0.10);text-align:center}
+.login-logo{margin-bottom:20px}
+.login-logo svg{width:64px;height:64px}
+.login-title{font-size:22px;font-weight:700;color:var(--verde);margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--txt2);margin-bottom:28px}
+.login-box input{width:100%;font-size:16px;padding:12px 16px;border:1px solid var(--borda);border-radius:var(--radius);outline:none;margin-bottom:12px;text-align:center;letter-spacing:.2em}
+.login-box input:focus{border-color:var(--verde)}
+.login-btn{width:100%;padding:13px;font-size:15px;font-weight:700;background:var(--verde);color:#fff;border:none;border-radius:var(--radius);cursor:pointer}
+.login-err{font-size:13px;color:var(--vermelho);margin-top:10px;display:none}
+
+/* DASHBOARD */
+.dashboard{display:none}
+.topbar{background:var(--verde);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-left svg{width:36px;height:36px}
+.topbar-title{font-size:16px;font-weight:700;color:#fff}
+.topbar-sub{font-size:11px;color:rgba(255,255,255,0.7)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.badge-online{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--verde-claro);color:var(--verde-txt);border:1px solid #97C459}
+.badge-offline{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3)}
+.btn-sair{font-size:12px;padding:6px 14px;border-radius:20px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);cursor:pointer}
+.btn-atualizar{font-size:12px;padding:6px 14px;border-radius:20px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);cursor:pointer}
+
+.content{max-width:1200px;margin:0 auto;padding:24px 16px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
+@media(min-width:600px){.stats-grid{grid-template-columns:repeat(4,1fr)}}
+.stat-card{background:var(--card);border-radius:var(--radius);padding:20px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
+.stat-label{font-size:12px;color:var(--txt2);font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.stat-val{font-size:28px;font-weight:700;color:var(--txt);line-height:1}
+.stat-unit{font-size:13px;color:var(--txt2);margin-top:4px}
+.stat-card.verde .stat-val{color:var(--verde)}
+.stat-card.amarelo .stat-val{color:var(--amarelo-txt)}
+.stat-card.azul .stat-val{color:var(--azul)}
+.stat-card.vermelho .stat-val{color:var(--vermelho)}
+
+/* GRID 2 COL */
+.grid2{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:20px}
+@media(min-width:768px){.grid2{grid-template-columns:1fr 1fr}}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
+.card-title{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title span{font-size:16px}
+
+/* TABELA TALHOES */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--borda)}
+td{padding:10px 12px;border-bottom:1px solid var(--borda);color:var(--txt)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+.tag-ok{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;background:var(--verde-claro);color:var(--verde-txt);font-weight:600}
+.tag-pend{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;background:var(--amarelo-claro);color:var(--amarelo-txt);font-weight:600}
+
+/* BARRA DE PROGRESSO */
+.bar-wrap{display:flex;align-items:center;gap:8px;margin-top:4px}
+.bar-bg{flex:1;height:6px;background:var(--borda);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:var(--verde);border-radius:3px;transition:width .5s}
+.bar-fill.amarelo{background:var(--amarelo)}
+.bar-pct{font-size:11px;color:var(--txt2);white-space:nowrap;min-width:36px;text-align:right}
+
+/* PENDENTES */
+.pend-list{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto}
+.pend-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--amarelo-claro);border-radius:8px;border-left:3px solid var(--amarelo)}
+.pend-frota{font-size:14px;font-weight:700;color:var(--txt)}
+.pend-info{font-size:12px;color:var(--txt2)}
+.pend-ton{font-size:13px;font-weight:600;color:var(--amarelo-txt)}
+
+/* CHART */
+.chart-wrap{position:relative;height:220px}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;z-index:100;font-size:15px;color:var(--verde);font-weight:600;gap:10px}
+.spinner{width:24px;height:24px;border:3px solid var(--verde-claro);border-top-color:var(--verde);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ATUALIZADO EM */
+.updated{font-size:11px;color:var(--txt3);text-align:right;margin-bottom:8px}
+
+.dif-pos{color:var(--verde);font-weight:600}
+.dif-neg{color:var(--vermelho);font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div> Carregando dados...
+</div>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="36" cy="36" r="35" fill="#3A6830"/>
+        <ellipse cx="36" cy="57" rx="16" ry="3.5" fill="rgba(0,0,0,0.2)"/>
+        <path d="M36 54 Q36 44 36 18" stroke="#fff" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 30 Q28 24 26 16" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 36 Q44 30 46 20" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 42 Q30 38 29 30" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M26 16 Q24 12 27 10" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M46 20 Q48 15 45 13" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="login-title">Fazenda Pituaçu</div>
+    <div class="login-sub">Dashboard — Colheita 26/27</div>
+    <input type="password" id="senha-input" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')entrar()">
+    <button class="login-btn" onclick="entrar()">Entrar</button>
+    <div class="login-err" id="login-err">Senha incorreta. Tente novamente.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="36" cy="36" r="35" fill="#3A6830"/>
+        <path d="M36 54 Q36 44 36 18" stroke="#fff" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 30 Q28 24 26 16" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 36 Q44 30 46 20" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div>
+        <div class="topbar-title">Fazenda Pituaçu</div>
+        <div class="topbar-sub">Dashboard Colheita 26/27</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="net-badge" class="badge-offline">Offline</span>
+      <button class="btn-atualizar" onclick="forcarAtualizacao()">↻ Atualizar</button>
+      <button class="btn-sair" onclick="sair()">Sair</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="updated" id="updated-at">Aguardando dados...</div>
+
+    <!-- STATS PRINCIPAIS -->
+    <div class="stats-grid">
+      <div class="stat-card verde">
+        <div class="stat-label">Total colhido</div>
+        <div class="stat-val" id="s-total">0,00</div>
+        <div class="stat-unit">toneladas reais</div>
+      </div>
+      <div class="stat-card azul">
+        <div class="stat-label">Total de cargas</div>
+        <div class="stat-val" id="s-cargas">0</div>
+        <div class="stat-unit">viagens registradas</div>
+      </div>
+      <div class="stat-card amarelo">
+        <div class="stat-label">Cargas pendentes</div>
+        <div class="stat-val" id="s-pend">0</div>
+        <div class="stat-unit">aguardando balança</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Diferença acumulada</div>
+        <div class="stat-val" id="s-dif">0,00</div>
+        <div class="stat-unit">presumido vs real</div>
+      </div>
+    </div>
+
+    <!-- GRAFICO + PENDENTES -->
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title"><span>📈</span> Evolução diária (ton reais)</div>
+        <div class="chart-wrap">
+          <canvas id="chart-diario"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>⏱</span> Cargas aguardando balança</div>
+        <div class="pend-list" id="pend-list">
+          <div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">Nenhuma pendente</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA TALHOES -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><span>📍</span> Por talhão</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Talhão</th>
+              <th>Cargas</th>
+              <th>Presumido (ton)</th>
+              <th>Real (ton)</th>
+              <th>Diferença</th>
+              <th>Pendentes</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-talhoes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CARGAS POR DIA -->
+    <div class="card">
+      <div class="card-title"><span>📅</span> Cargas por dia</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Cargas</th>
+              <th>Ton reais</th>
+              <th>Ton presumidas</th>
+              <th>Pendentes</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-dias"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- SENHA ----
+var SENHA = 'colheita2627';
+var _autenticado = false;
+
+function entrar() {
+  var v = document.getElementById('senha-input').value;
+  if (v === SENHA) {
+    _autenticado = true;
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    iniciarFirebase();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('senha-input').value = '';
+    document.getElementById('senha-input').focus();
+  }
+}
+
+function sair() {
+  _autenticado = false;
+  document.getElementById('login-wrap').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('senha-input').value = '';
+}
+
+// ---- FIREBASE ----
+var _cargas = [];
+var _chartDiario = null;
+
+function iniciarFirebase() {
+  var firebaseConfig = {
+    apiKey: "AIzaSyCKboxVQVkuVEp9b41u9ANVQbFi5CWBbww",
+    authDomain: "pituacu-19897.firebaseapp.com",
+    projectId: "pituacu-19897",
+    storageBucket: "pituacu-19897.firebasestorage.app",
+    messagingSenderId: "743076621213",
+    appId: "1:743076621213:web:1b3df6bbacef8f7ed91d74"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  var db = firebase.firestore();
+  var col = db.collection("cargas");
+
+  col.orderBy("criadoEm", "desc").onSnapshot(function(snap) {
+    _cargas = snap.docs.map(function(d) {
+      var data = d.data();
+      data.id = d.id;
+      return data;
+    });
+    document.getElementById('loading').style.display = 'none';
+    renderDashboard();
+  }, function(err) {
+    document.getElementById('loading').style.display = 'none';
+    console.error(err);
+  });
+
+  atualizarStatus();
+  window.addEventListener('online', atualizarStatus);
+  window.addEventListener('offline', atualizarStatus);
+}
+
+function forcarAtualizacao() {
+  document.getElementById('loading').style.display = 'flex';
+  setTimeout(function() {
+    renderDashboard();
+    document.getElementById('loading').style.display = 'none';
+  }, 800);
+}
+
+function atualizarStatus() {
+  var el = document.getElementById('net-badge');
+  if (navigator.onLine) {
+    el.className = 'badge-online';
+    el.textContent = 'Online';
+  } else {
+    el.className = 'badge-offline';
+    el.textContent = 'Offline';
+  }
+}
+
+// ---- HELPERS ----
+function fNum(n) { return Number(n).toFixed(2).replace('.', ','); }
+function fDate(d) {
+  if (!d) return '';
+  var p = d.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+// ---- RENDER ----
+function renderDashboard() {
+  var cargas = _cargas;
+  var completas = cargas.filter(function(c) { return c.pesoReal != null; });
+  var pendentes = cargas.filter(function(c) { return c.pesoReal == null; });
+  var totalReal = completas.reduce(function(s, c) { return s + c.pesoReal; }, 0);
+  var totalPre = completas.reduce(function(s, c) { return s + c.presumido; }, 0);
+  var dif = totalReal - totalPre;
+
+  // Stats
+  document.getElementById('s-total').textContent = fNum(totalReal);
+  document.getElementById('s-cargas').textContent = cargas.length;
+  document.getElementById('s-pend').textContent = pendentes.length;
+  var difEl = document.getElementById('s-dif');
+  difEl.textContent = (dif >= 0 ? '+' : '') + fNum(dif);
+  difEl.style.color = dif >= 0 ? 'var(--verde)' : 'var(--vermelho)';
+
+  // Atualizado em
+  var now = new Date();
+  document.getElementById('updated-at').textContent =
+    'Atualizado em ' + String(now.getDate()).padStart(2,'0') + '/' +
+    String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear() + ' às ' +
+    String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+  // Pendentes
+  var pList = document.getElementById('pend-list');
+  if (pendentes.length === 0) {
+    pList.innerHTML = '<div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">Nenhuma pendente</div>';
+  } else {
+    pList.innerHTML = pendentes.map(function(c) {
+      return '<div class="pend-item">' +
+        '<div>' +
+          '<div class="pend-frota">Frota ' + c.frota + '</div>' +
+          '<div class="pend-info">' + fDate(c.data) + ' às ' + c.hora + ' · Talhão ' + c.talhao + '</div>' +
+        '</div>' +
+        '<div class="pend-ton">' + fNum(c.presumido) + ' ton</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // Tabela talhões
+  var tSet = {};
+  cargas.forEach(function(c) { tSet[c.talhao] = true; });
+  var talhoes = Object.keys(tSet).sort(function(a,b){ return Number(a)-Number(b); });
+  var maxTon = 0;
+  var porTalhao = talhoes.map(function(t) {
+    var cs = cargas.filter(function(c) { return c.talhao === t; });
+    var comp = cs.filter(function(c) { return c.pesoReal != null; });
+    var pend = cs.filter(function(c) { return c.pesoReal == null; });
+    var real = comp.reduce(function(s,c){ return s+c.pesoReal; }, 0);
+    var pre = comp.reduce(function(s,c){ return s+c.presumido; }, 0);
+    if (real > maxTon) maxTon = real;
+    return { t:t, n:cs.length, real:real, pre:pre, dif:real-pre, pend:pend.length };
+  }).sort(function(a,b){ return b.real - a.real; });
+
+  var tbody = document.getElementById('tabela-talhoes');
+  tbody.innerHTML = porTalhao.map(function(p) {
+    var pct = maxTon > 0 ? (p.real / maxTon * 100) : 0;
+    return '<tr>' +
+      '<td><strong>Talhão ' + p.t + '</strong>' +
+        '<div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:' + pct.toFixed(0) + '%"></div></div>' +
+        '<span class="bar-pct">' + pct.toFixed(0) + '%</span></div></td>' +
+      '<td>' + p.n + '</td>' +
+      '<td>' + fNum(p.pre) + '</td>' +
+      '<td><strong>' + fNum(p.real) + '</strong></td>' +
+      '<td><span class="' + (p.dif >= 0 ? 'dif-pos' : 'dif-neg') + '">' + (p.dif >= 0 ? '+' : '') + fNum(p.dif) + '</span></td>' +
+      '<td>' + (p.pend > 0 ? '<span class="tag-pend">' + p.pend + ' pend.</span>' : '<span class="tag-ok">OK</span>') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  // Tabela por dia
+  var dSet = {};
+  cargas.forEach(function(c) { if(c.data) dSet[c.data] = true; });
+  var dias = Object.keys(dSet).sort(function(a,b){ return b.localeCompare(a); });
+  var porDia = dias.map(function(d) {
+    var cs = cargas.filter(function(c) { return c.data === d; });
+    var comp = cs.filter(function(c) { return c.pesoReal != null; });
+    var pend = cs.filter(function(c) { return c.pesoReal == null; });
+    return {
+      d: d,
+      n: cs.length,
+      real: comp.reduce(function(s,c){ return s+c.pesoReal; },0),
+      pre: cs.reduce(function(s,c){ return s+c.presumido; },0),
+      pend: pend.length
+    };
+  });
+
+  var tbodyDias = document.getElementById('tabela-dias');
+  tbodyDias.innerHTML = porDia.map(function(p) {
+    return '<tr>' +
+      '<td><strong>' + fDate(p.d) + '</strong></td>' +
+      '<td>' + p.n + '</td>' +
+      '<td><strong>' + fNum(p.real) + '</strong></td>' +
+      '<td>' + fNum(p.pre) + '</td>' +
+      '<td>' + (p.pend > 0 ? '<span class="tag-pend">' + p.pend + ' pend.</span>' : '<span class="tag-ok">OK</span>') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  // Gráfico evolução diária
+  var diasOrdem = dias.slice().sort();
+  var labelsChart = diasOrdem.map(fDate);
+  var dadosChart = diasOrdem.map(function(d) {
+    var cs = cargas.filter(function(c) { return c.data === d && c.pesoReal != null; });
+    return cs.reduce(function(s,c){ return s+c.pesoReal; }, 0);
+  });
+
+  if (_chartDiario) { _chartDiario.destroy(); }
+  var ctx = document.getElementById('chart-diario').getContext('2d');
+  _chartDiario = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labelsChart,
+      datasets: [{
+        label: 'Toneladas reais',
+        data: dadosChart,
+        backgroundColor: 'rgba(74,124,63,0.7)',
+        borderColor: '#4A7C3F',
+        borderWidth: 1.5,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } }
+      }
+    }
+  });
+}
+
+// Esconder loading inicial até login
+document.getElementById('loading').style.display = 'none';
+</script>
+</body>
+</html>
