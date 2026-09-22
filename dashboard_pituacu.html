@@ -105,6 +105,17 @@ tr:hover td{background:var(--bg)}
 
 .dif-pos{color:var(--verde);font-weight:600}
 .dif-neg{color:var(--vermelho);font-weight:600}
+
+/* FILTRO PERIODO */
+.periodo-bar{background:var(--card);border-bottom:1px solid var(--borda);padding:12px 24px}
+.periodo-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.periodo-label{font-size:13px;font-weight:600;color:var(--txt2);white-space:nowrap}
+.periodo-input{font-size:14px;padding:7px 12px;border:1px solid var(--borda2);border-radius:8px;outline:none;color:var(--txt);background:var(--bg)}
+.periodo-input:focus{border-color:var(--verde)}
+.periodo-btn{padding:7px 16px;font-size:13px;font-weight:600;border:none;border-radius:8px;cursor:pointer}
+.btn-aplicar{background:var(--verde);color:#fff}
+.btn-limpar{background:var(--bg);color:var(--txt2);border:1px solid var(--borda2);}
+.periodo-info{font-size:12px;color:var(--azul);font-weight:500;margin-left:4px}
 </style>
 </head>
 <body>
@@ -159,6 +170,18 @@ tr:hover td{background:var(--bg)}
     </div>
   </div>
 
+
+  <!-- FILTRO PERÍODO -->
+  <div class="periodo-bar">
+    <div class="periodo-inner">
+      <span class="periodo-label">Filtrar período:</span>
+      <input type="date" class="periodo-input" id="fil-ini" onchange="aplicarFiltro()">
+      <span style="font-size:13px;color:var(--txt2)">até</span>
+      <input type="date" class="periodo-input" id="fil-fim" onchange="aplicarFiltro()">
+      <button class="periodo-btn btn-limpar" onclick="limparFiltro()">Ver tudo</button>
+      <span class="periodo-info" id="periodo-info"></span>
+    </div>
+  </div>
   <div class="content">
     <div class="updated" id="updated-at">Aguardando dados...</div>
 
@@ -278,6 +301,46 @@ function sair() {
 var _cargas = [];
 var _chartDiario = null;
 
+var _filtroIni = null;
+var _filtroFim = null;
+
+function aplicarFiltro() {
+  _filtroIni = document.getElementById('fil-ini').value || null;
+  _filtroFim = document.getElementById('fil-fim').value || null;
+  atualizarInfoPeriodo();
+  renderDashboard();
+}
+
+function limparFiltro() {
+  _filtroIni = null;
+  _filtroFim = null;
+  document.getElementById('fil-ini').value = '';
+  document.getElementById('fil-fim').value = '';
+  document.getElementById('periodo-info').textContent = '';
+  renderDashboard();
+}
+
+function atualizarInfoPeriodo() {
+  var el = document.getElementById('periodo-info');
+  if (_filtroIni || _filtroFim) {
+    var ini = _filtroIni ? fDate(_filtroIni) : '...';
+    var fim = _filtroFim ? fDate(_filtroFim) : '...';
+    el.textContent = 'Exibindo: ' + ini + ' a ' + fim;
+  } else {
+    el.textContent = '';
+  }
+}
+
+function filtrarCargas(cargas) {
+  return cargas.filter(function(c) {
+    if (!c.data) return true;
+    if (_filtroIni && c.data < _filtroIni) return false;
+    if (_filtroFim && c.data > _filtroFim) return false;
+    return true;
+  });
+}
+
+
 function iniciarFirebase() {
   var firebaseConfig = {
     apiKey: "AIzaSyCKboxVQVkuVEp9b41u9ANVQbFi5CWBbww",
@@ -341,7 +404,7 @@ function fDate(d) {
 
 // ---- RENDER ----
 function renderDashboard() {
-  var cargas = _cargas;
+  var cargas = filtrarCargas(_cargas);
   var completas = cargas.filter(function(c) { return c.pesoReal != null; });
   var pendentes = cargas.filter(function(c) { return c.pesoReal == null; });
   var totalReal = completas.reduce(function(s, c) { return s + c.pesoReal; }, 0);
