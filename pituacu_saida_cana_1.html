@@ -95,10 +95,46 @@ html,body{height:100%;background:var(--bg2);font-family:-apple-system,BlinkMacSy
 .modal-actions .btn-primary{margin-top:0}
 .dif-pos{color:var(--verde);font-weight:700}
 .dif-neg{color:var(--vermelho);font-weight:700}
+
+/* LOGIN */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:var(--bg2)}
+.login-box{background:var(--bg);border-radius:var(--radius-lg);padding:36px 28px;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,0.10);text-align:center}
+.login-logo{margin-bottom:16px}
+.login-logo svg{width:64px;height:64px}
+.login-title{font-size:20px;font-weight:700;color:var(--verde);margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--txt2);margin-bottom:24px}
+.login-input{width:100%;font-size:16px;padding:12px 16px;border:1px solid var(--borda2);border-radius:var(--radius);outline:none;margin-bottom:12px;text-align:center;letter-spacing:.2em;-webkit-appearance:none}
+.login-input:focus{border-color:var(--verde)}
+.login-btn{width:100%;padding:13px;font-size:16px;font-weight:700;background:var(--verde);color:#fff;border:none;border-radius:var(--radius);cursor:pointer}
+.login-err{font-size:13px;color:var(--vermelho);margin-top:10px;display:none}
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- TELA DE LOGIN -->
+<div id="login-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:#F5F5F5">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="36" cy="36" r="35" fill="#3A6830"/>
+        <ellipse cx="36" cy="57" rx="16" ry="3.5" fill="rgba(0,0,0,0.2)"/>
+        <path d="M36 54 Q36 44 36 18" stroke="#fff" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 30 Q28 24 26 16" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 36 Q44 30 46 20" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M36 42 Q30 38 29 30" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M26 16 Q24 12 27 10" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M46 20 Q48 15 45 13" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="login-title">Fazenda Pituaçu</div>
+    <div class="login-sub">Sistema de Saída de Cana</div>
+    <input class="login-input" type="password" id="login-senha" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')fazerLogin()">
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-err" id="login-err">Senha incorreta. Tente novamente.</div>
+  </div>
+</div>
+
+<div class="app" id="main-app" style="display:none">
   <div id="offline-banner" class="offline-banner" style="display:none">
     Sem internet — dados salvos no celular e enviados quando o sinal voltar
   </div>
@@ -586,8 +622,26 @@ document.getElementById('modal-balanca').addEventListener('click', function(e) {
   if (e.target === this) fecharModal();
 });
 
-setNow();
-atualizarStatus();
+
+// ---- LOGIN ----
+var SENHA_APP = 'fazendapituacu2026';
+
+function fazerLogin() {
+  var v = document.getElementById('login-senha').value;
+  if (v === SENHA_APP) {
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('main-app').style.display = 'flex';
+    setNow();
+    atualizarStatus();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-senha').value = '';
+    document.getElementById('login-senha').focus();
+  }
+}
+
+// Aguarda login para iniciar
+
 </script>
 </body>
 </html>
